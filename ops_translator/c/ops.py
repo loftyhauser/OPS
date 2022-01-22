@@ -56,7 +56,6 @@
 #  xxx_omp_kernel.cpp -- for OpenMP x86 execution
 #  xxx_kernel.cu -- for CUDA execution
 #
-
 """
 OPS source code transformation tool (for the C/C++ API)
 
@@ -88,7 +87,6 @@ import sys
 from os import path
 import re
 import datetime
-
 """import SEQ/MPI, OpenMP, CUDA, OpenACC and OpenCL code generation functions"""
 from ops_gen_mpi_inline import ops_gen_mpi_inline
 from ops_gen_mpi_lazy import ops_gen_mpi_lazy
@@ -107,6 +105,7 @@ comment_remover = util.comment_remover
 remove_trailing_w_space = util.remove_trailing_w_space
 verbose = config.verbose
 
+
 def ops_parse_calls(text):
     """Parsing for ops_init/ops_exit"""
 
@@ -117,6 +116,7 @@ def ops_parse_calls(text):
     exits = len(re.findall('ops_exit', text))
 
     return (inits, exits)
+
 
 def ops_parse_macro_defs(text):
     """Parsing for C macro definitions"""
@@ -134,6 +134,7 @@ def ops_parse_macro_defs(text):
         defs[key] = value
         # print(key + " -> " + value)
     return defs
+
 
 def self_evaluate_macro_defs(macro_defs):
     """Recursively evaluate C macro definitions that refer to other detected macros"""
@@ -157,7 +158,8 @@ def self_evaluate_macro_defs(macro_defs):
                 if m != None:
                     ## The macro "k" refers to macro "k2"
                     k2_val = macro_defs[k2]
-                    macro_defs[k] = re.sub(pattern, "\\g<1>"+k2_val+"\\g<2>", k_val)
+                    macro_defs[k] = re.sub(pattern,
+                                           "\\g<1>" + k2_val + "\\g<2>", k_val)
                     # print("Performing a substitution of '" + k2 + "'->'" + k2_val + "' into '" + k_val + "' to produce '" + macro_defs[k] + "'")
                     substitutions_performed = True
 
@@ -176,6 +178,7 @@ def self_evaluate_macro_defs(macro_defs):
                     # print("Replacing '" + val + "' with '" + str(res) + "'")
                     macro_defs[k] = str(res)
 
+
 def evaluate_macro_defs_in_string(macro_defs, string):
     """Recursively evaluate C macro definitions in 'string' """
 
@@ -192,11 +195,12 @@ def evaluate_macro_defs_in_string(macro_defs, string):
             if m != None:
                 ## "string" contains a reference to macro "k", so substitute
                 ## in its definition:
-                resolved_string_new = re.sub(k_pattern, "\\g<1>"+k_val+"\\g<2>", resolved_string)
+                resolved_string_new = re.sub(k_pattern,
+                                             "\\g<1>" + k_val + "\\g<2>",
+                                             resolved_string)
                 # print("Performing a substitution of '" + k + "'->'" + k_val + "' into '" + resolved_string + "'' to produce '" + resolved_string_new + "'")
                 resolved_string = resolved_string_new
                 substitutions_performed = True
-
 
     if re.search(arithmetic_regex_pattern, resolved_string) != None:
         res = ""
@@ -210,37 +214,41 @@ def evaluate_macro_defs_in_string(macro_defs, string):
 
     return resolved_string
 
+
 def ops_decl_const_parse(text, macro_defs):
-  """Parsing for ops_decl_const calls"""
+    """Parsing for ops_decl_const calls"""
 
-  consts = []
-  for m in re.finditer('(ops_|\.|->)decl_const\((.*)\)', text):
-    args = m.group(2).split(',')
+    consts = []
+    for m in re.finditer('(ops_|\.|->)decl_const\((.*)\)', text):
+        args = m.group(2).split(',')
 
-    # check for syntax errors
-    if len(args) != 4:
-      print('Error in ops_decl_const : must have four arguments')
-      return
-    args[1] = evaluate_macro_defs_in_string(macro_defs, args[1])
+        # check for syntax errors
+        if len(args) != 4:
+            print('Error in ops_decl_const : must have four arguments')
+            return
+        args[1] = evaluate_macro_defs_in_string(macro_defs, args[1])
 
-    if args[0].count('"') != 2:
-      print('Error in ops_decl_const : name must be a string literal')
-      return
+        if args[0].count('"') != 2:
+            print('Error in ops_decl_const : name must be a string literal')
+            return
 
-    if args[2].count('"') != 2:
-      print('Error in ops_decl_const : type must be a string literal')
-      return
+        if args[2].count('"') != 2:
+            print('Error in ops_decl_const : type must be a string literal')
+            return
 
-    consts.append({
-          'loc': m.start(),
-          'name': args[0].strip(),
-          'dim': evaluate_macro_defs_in_string(macro_defs, args[1].strip()),
-          'type': (args[2].replace('"','')).strip(),
-          'name2': args[3].strip()
-    })
+        consts.append({
+            'loc':
+            m.start(),
+            'name':
+            args[0].strip(),
+            'dim':
+            evaluate_macro_defs_in_string(macro_defs, args[1].strip()),
+            'type': (args[2].replace('"', '')).strip(),
+            'name2':
+            args[3].strip()
+        })
 
-  return consts
-
+    return consts
 
 
 def arg_parse(text, j):
@@ -258,6 +266,7 @@ def arg_parse(text, j):
                 return loc2
         loc2 = loc2 + 1
 
+
 def get_arg_dat(arg_string, j, macro_defs):
     loc = arg_parse(arg_string, j + 1)
     dat_args_string = arg_string[arg_string.find('(', j) + 1:loc]
@@ -269,32 +278,54 @@ def get_arg_dat(arg_string, j, macro_defs):
     #print num
 
     # check for syntax errors
-    if not(len(dat_args_string.split(',')) == 5 or len(dat_args_string.split(',')) == 6 ):
-      print(('Error parsing op_arg_dat(%s): must have five or six arguments' % dat_args_string))
-      return
+    if not (len(dat_args_string.split(',')) == 5
+            or len(dat_args_string.split(',')) == 6):
+        print(
+            ('Error parsing op_arg_dat(%s): must have five or six arguments' %
+             dat_args_string))
+        return
 
     if len(dat_args_string.split(',')) == 5:
-      # split the dat_args_string into  5 and create a struct with the elements
-      # and type as op_arg_dat
-      temp_dat = {'type': 'ops_arg_dat',
-                  'dat': dat_args_string.split(',')[0].strip(),
-                  'dim': evaluate_macro_defs_in_string(macro_defs, dat_args_string.split(',')[1].strip()),
-                  'sten': dat_args_string.split(',')[2].strip(),
-                  'typ': (dat_args_string.split(',')[3].replace('"','')).strip(),
-                  'acc': dat_args_string.split(',')[4].strip()}
+        # split the dat_args_string into  5 and create a struct with the elements
+        # and type as op_arg_dat
+        temp_dat = {
+            'type':
+            'ops_arg_dat',
+            'dat':
+            dat_args_string.split(',')[0].strip(),
+            'dim':
+            evaluate_macro_defs_in_string(
+                macro_defs,
+                dat_args_string.split(',')[1].strip()),
+            'sten':
+            dat_args_string.split(',')[2].strip(),
+            'typ': (dat_args_string.split(',')[3].replace('"', '')).strip(),
+            'acc':
+            dat_args_string.split(',')[4].strip()
+        }
     elif len(dat_args_string.split(',')) == 6:
-      # split the dat_args_string into  6 and create a struct with the elements
-      # and type as op_arg_dat
-      temp_dat = {'type': 'ops_arg_dat_opt',
-                  'dat': dat_args_string.split(',')[0].strip(),
-                  'dim': evaluate_macro_defs_in_string(macro_defs, dat_args_string.split(',')[1].strip()),
-                  'sten': dat_args_string.split(',')[2].strip(),
-                  'typ': (dat_args_string.split(',')[3].replace('"','')).strip(),
-                  'acc': dat_args_string.split(',')[4].strip(),
-                  'opt': dat_args_string.split(',')[5].strip()}
-
+        # split the dat_args_string into  6 and create a struct with the elements
+        # and type as op_arg_dat
+        temp_dat = {
+            'type':
+            'ops_arg_dat_opt',
+            'dat':
+            dat_args_string.split(',')[0].strip(),
+            'dim':
+            evaluate_macro_defs_in_string(
+                macro_defs,
+                dat_args_string.split(',')[1].strip()),
+            'sten':
+            dat_args_string.split(',')[2].strip(),
+            'typ': (dat_args_string.split(',')[3].replace('"', '')).strip(),
+            'acc':
+            dat_args_string.split(',')[4].strip(),
+            'opt':
+            dat_args_string.split(',')[5].strip()
+        }
 
     return temp_dat
+
 
 def get_arg_gbl(arg_string, k, macro_defs):
     loc = arg_parse(arg_string, k + 1)
@@ -311,13 +342,21 @@ def get_arg_gbl(arg_string, k, macro_defs):
 
     # split the gbl_args_string into  4 and create a struct with the elements
     # and type as op_arg_gbl
-    temp_gbl = {'type': 'ops_arg_gbl',
-                'data': gbl_args_string.split(',')[0].strip(),
-                'dim': evaluate_macro_defs_in_string(macro_defs, gbl_args_string.split(',')[1].strip()),
-                'typ': (gbl_args_string.split(',')[2].replace('"','')).strip(),
-                'acc': gbl_args_string.split(',')[3].strip()}
+    temp_gbl = {
+        'type':
+        'ops_arg_gbl',
+        'data':
+        gbl_args_string.split(',')[0].strip(),
+        'dim':
+        evaluate_macro_defs_in_string(macro_defs,
+                                      gbl_args_string.split(',')[1].strip()),
+        'typ': (gbl_args_string.split(',')[2].replace('"', '')).strip(),
+        'acc':
+        gbl_args_string.split(',')[3].strip()
+    }
 
     return temp_gbl
+
 
 def get_arg_idx(arg_string, l):
     loc = arg_parse(arg_string, l + 1)
@@ -326,75 +365,92 @@ def get_arg_idx(arg_string, l):
 
     return temp_idx
 
+
 def ops_par_loop_parse(text, macro_defs):
-  """Parsing for op_par_loop calls"""
+    """Parsing for op_par_loop calls"""
 
-  loop_args = []
+    loop_args = []
 
-  #text = comment_remover(text)
-  search = "ops_par_loop"
-  i = text.find(search)
-  while i > -1:
-      arg_string = text[text.find('(', i) + 1:text.find(';', i + 12)]
+    #text = comment_remover(text)
+    search = "ops_par_loop"
+    i = text.find(search)
+    while i > -1:
+        arg_string = text[text.find('(', i) + 1:text.find(';', i + 12)]
 
-      # parse arguments in par loop
-      temp_args = []
-      num_args = 0
+        # parse arguments in par loop
+        temp_args = []
+        num_args = 0
 
-      # parse each op_arg_dat
-      search2 = "ops_arg_dat"
-      search3 = "ops_arg_gbl"
-      search4 = "ops_arg_idx"
-      search5 = "ops_arg_reduce"
-      j = arg_string.find(search2)
-      k = arg_string.find(search3)
-      l = arg_string.find(search4)
-      m = arg_string.find(search5)
+        # parse each op_arg_dat
+        search2 = "ops_arg_dat"
+        search3 = "ops_arg_gbl"
+        search4 = "ops_arg_idx"
+        search5 = "ops_arg_reduce"
+        j = arg_string.find(search2)
+        k = arg_string.find(search3)
+        l = arg_string.find(search4)
+        m = arg_string.find(search5)
 
-      while j > -1 or k > -1 or l > -1 or m>-1:
-        if j>=0 and (j < k or k<=-1) and (j < l or l <=-1) and (j < m or m <=-1):
-            temp_dat = get_arg_dat(arg_string, j, macro_defs)
-            # append this struct to a temporary list/array
-            temp_args.append(temp_dat)
-            num_args = num_args + 1
-            j = arg_string.find(search2, j + 12)
+        while j > -1 or k > -1 or l > -1 or m > -1:
+            if j >= 0 and (j < k or k <= -1) and (j < l
+                                                  or l <= -1) and (j < m
+                                                                   or m <= -1):
+                temp_dat = get_arg_dat(arg_string, j, macro_defs)
+                # append this struct to a temporary list/array
+                temp_args.append(temp_dat)
+                num_args = num_args + 1
+                j = arg_string.find(search2, j + 12)
 
-        elif k>=0 and (k < j or j<=-1) and (k < l or l <=-1) and (k < m or m <=-1):
-            temp_gbl = get_arg_gbl(arg_string, k, macro_defs)
-            # append this struct to a temporary list/array
-            temp_args.append(temp_gbl)
-            num_args = num_args + 1
-            k = arg_string.find(search3, k + 12)
+            elif k >= 0 and (k < j or j <= -1) and (k < l or l <= -1) and (
+                    k < m or m <= -1):
+                temp_gbl = get_arg_gbl(arg_string, k, macro_defs)
+                # append this struct to a temporary list/array
+                temp_args.append(temp_gbl)
+                num_args = num_args + 1
+                k = arg_string.find(search3, k + 12)
 
-        elif l>=0 and (l < j or j<=-1) and (l < k or k <=-1) and (l < m or m <=-1):
-            temp_idx = get_arg_idx(arg_string, l)
-            # append this struct to a temporary list/array
-            temp_args.append(temp_idx)
-            num_args = num_args + 1
-            l = arg_string.find(search4, l + 12)
+            elif l >= 0 and (l < j or j <= -1) and (l < k or k <= -1) and (
+                    l < m or m <= -1):
+                temp_idx = get_arg_idx(arg_string, l)
+                # append this struct to a temporary list/array
+                temp_args.append(temp_idx)
+                num_args = num_args + 1
+                l = arg_string.find(search4, l + 12)
 
-        elif m>=0 and (m < j or j<=-1) and (m < l or l <=-1) and (m < k or k <=-1):
-            temp_gbl = get_arg_gbl(arg_string, m,  macro_defs)
-            # append this struct to a temporary list/array
-            temp_args.append(temp_gbl)
-            num_args = num_args + 1
-            m = arg_string.find(search5, m + 15)
+            elif m >= 0 and (m < j or j <= -1) and (m < l or l <= -1) and (
+                    m < k or k <= -1):
+                temp_gbl = get_arg_gbl(arg_string, m, macro_defs)
+                # append this struct to a temporary list/array
+                temp_args.append(temp_gbl)
+                num_args = num_args + 1
+                m = arg_string.find(search5, m + 15)
 
-      temp = {'loc': i,
-            'name1': arg_string.split(',')[0].strip(),
-            'name2': arg_string.split(',')[1].strip(),
-            'block': arg_string.split(',')[2].strip(),
-            'dim': evaluate_macro_defs_in_string(macro_defs, arg_string.split(',')[3].strip()),
-            'range': arg_string.split(',')[4].strip(),
-            'args': temp_args,
-            'nargs': num_args}
-      #print temp
-      loop_args.append(temp)
+        temp = {
+            'loc':
+            i,
+            'name1':
+            arg_string.split(',')[0].strip(),
+            'name2':
+            arg_string.split(',')[1].strip(),
+            'block':
+            arg_string.split(',')[2].strip(),
+            'dim':
+            evaluate_macro_defs_in_string(macro_defs,
+                                          arg_string.split(',')[3].strip()),
+            'range':
+            arg_string.split(',')[4].strip(),
+            'args':
+            temp_args,
+            'nargs':
+            num_args
+        }
+        #print temp
+        loop_args.append(temp)
 
-      i = text.find(search, i + 15)
-  if verbose:
-      print('\n\n')
-  return (loop_args)
+        i = text.find(search, i + 15)
+    if verbose:
+        print('\n\n')
+    return (loop_args)
 
 
 def parse_source_files(source_files):
@@ -594,30 +650,28 @@ def parse_source_files(source_files):
             repeat = False
             which_file = -1
             for nk, kernel in enumerate(kernels):
-                rep1 = kernel['name'] == name and \
-                  kernel['nargs'] == nargs and \
-                  kernel['dim'] == dim and \
-                  kernel['range'] == _range
-                if rep1:
-                    rep2 = True
+                if kernel['name'] == name:
+                    rep2 = kernel['nargs'] == nargs and kernel['dim'] == dim
                     for arg in range(0, nargs):
                         rep2 = rep2 and \
                             kernel['stens'][arg] == stens[arg] and \
                             kernel['dims'][arg] == dims[arg] and \
                             kernel['typs'][arg] == typs[arg] and \
                             kernel['accs'][arg] == accs[arg]
-                        #kernel['var'][arg] == var[arg] and \
                     if rep2:
                         if verbose:
-                            print(('repeated kernel with compatible arguments: ' + \
-                                kernel['name']))
+                            print(
+                                'repeated kernel with compatible arguments: ' +
+                                name)
                         repeat = True
                         which_file = nk
-                    else:
-                        print((
-                            'repeated kernel with incompatible arguments: ERROR'
-                            + kernel['name']))
                         break
+                    else:
+                        print(
+                            'repeated kernel with incompatible arguments: ERROR '
+                            + name)
+                        break
+
 
             #
             # output various diagnostics
@@ -666,6 +720,7 @@ def parse_source_files(source_files):
 
     return texts, loop_args_in_files, kernels_in_files, kernels, consts, soa_set
 
+
 def generate_ops_files(sources, source_texts, loop_args_in_files,
                        kernels_in_files, kernels):
     for src_file, text, loop_args, kernels_in_file in zip(
@@ -688,7 +743,7 @@ def generate_ops_files(sources, source_texts, loop_args_in_files,
                 header_len = 12
                 loc_header = [text.find("ops_seq_v2.h")]
 
-            if loc_header[0] != -1: # make sure loc points to whitespace
+            if loc_header[0] != -1:  # make sure loc points to whitespace
                 loc_header[0] -= 1
                 header_len += 1
 
@@ -718,7 +773,8 @@ def generate_ops_files(sources, source_texts, loop_args_in_files,
                     for k in kernels_in_file:
                         line = '\nvoid ops_par_loop_' + \
                             kernels[k]['name'] + '(char const *, ops_block, int , int*,\n'
-                        line += ',\n'.join(['  ops_arg'] * kernels[k]['nargs']) + ' );\n'
+                        line += ',\n'.join(
+                            ['  ops_arg'] * kernels[k]['nargs']) + ' );\n'
                         fid.write(line)
 
                     fid.write('\n')
@@ -793,6 +849,7 @@ def generate_kernel_files(app_name, consts, kernels, soa_set):
             print(
                 'Install and add clang-format to PATH to format generated code to conform to code formatting guidelines'
             )
+
 
 def main(source_files):
     if not source_files:
