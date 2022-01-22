@@ -91,13 +91,6 @@ def ops_gen_mpi_opencl(master, date, consts, kernels, soa_set):
   ##########################################################################
   #  create new kernel files **_kernel.cl
   ##########################################################################
-  #kernel_name_list = []
-  #kernel_list_text = ''
-  #kernel_list__build_text = ''
-  #indent = 10*' '
-  #for nk in range(0,len(kernels)):
-  #  if kernels[nk]['name'] not in kernel_name_list :
-  #    kernel_name_list.append(kernels[nk]['name'])
   try:
     os.makedirs('./OpenCL')
   except OSError as e:
@@ -1154,19 +1147,16 @@ def ops_gen_mpi_opencl(master, date, consts, kernels, soa_set):
 
 
 
-  kernel_name_list = []
   kernel_list_text = ''
   kernel_list__build_text = ''
   indent = 10*' '
   for nk in range(0,len(kernels)):
-    #if kernels[nk]['name'] not in kernel_name_list : -- is this necessary ??
-    kernel_name_list.append(kernels[nk]['name'])
     if not (('initialise' in kernels[nk]['name']) or ('generate' in kernels[nk]['name'])):
-      kernel_list_text = kernel_list_text + '"./OpenCL/'+kernel_name_list[nk]+'.cl"'
+      kernel_list_text = kernel_list_text + '"./OpenCL/'+kernels[nk]['name']+'.cl"'
       if nk != len(kernels)-1:
         kernel_list_text = kernel_list_text+',\n'+indent
       kernel_list__build_text = kernel_list__build_text + \
-      'block->instance->opencl_instance->OPS_opencl_core.kernel['+str(nk)+'] = clCreateKernel(block->instance->opencl_instance->OPS_opencl_core.program, "ops_'+kernel_name_list[nk]+'", &ret);\n      '+\
+      'block->instance->opencl_instance->OPS_opencl_core.kernel['+str(nk)+'] = clCreateKernel(block->instance->opencl_instance->OPS_opencl_core.program, "ops_'+kernels[nk]['name']+'", &ret);\n      '+\
       'clSafeCall( ret );\n      '
 
 
@@ -1195,14 +1185,13 @@ def ops_gen_mpi_opencl(master, date, consts, kernels, soa_set):
 
   comm('user kernel files')
 
-  #create unique set of kernel names list
-  unique = list(set(kernel_name_list))
 
-  for nk in range(0, len(unique)):
-    if not (('initialise' in unique[nk]) or ('generate' in unique[nk])):
-      code('#include "' + unique[nk] + '_opencl_kernel.cpp"')
-    else:
-       code('#include "' + '../MPI_OpenMP/' + unique[nk] + '_cpu_kernel.cpp"')
+  for nk in range(0,len(kernels)):
+      if not (('initialise' in kernels[nk]['name']) or ('generate' in kernels[nk]['name'])):
+          code('#include "' + kernels[nk]['name'] + '_opencl_kernel.cpp"')
+      else:
+          code('#include "' + '../MPI_OpenMP/' + kernels[nk]['name'] + '_cpu_kernel.cpp"')
+
 
 
 
